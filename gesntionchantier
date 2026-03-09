@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Application Chantier - M. ROUSSEAU</title>
+    <style>
+        :root { --main: #2c3e50; --danger: #d32f2f; }
+        body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 20px; }
+        .admin-nav { background: var(--main); color: white; padding: 15px; position: sticky; top: 0; display: flex; gap: 20px; justify-content: center; align-items: center; z-index: 100; }
+        select { padding: 8px; border-radius: 4px; border: none; font-weight: bold; }
+        .btn-print { background: #27ae60; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .page-a4 { background: white; width: 21cm; min-height: 29.7cm; margin: 20px auto; padding: 1.2cm; box-sizing: border-box; box-shadow: 0 0 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; }
+        .header { display: grid; grid-template-columns: 100px 1fr 150px; border-bottom: 3px solid var(--main); padding-bottom: 10px; margin-bottom: 20px; }
+        .info-bar { display: grid; grid-template-columns: 1.5fr 0.5fr 0.5fr 1fr; gap: 10px; margin-bottom: 20px; border: 1px solid #000; padding: 10px; }
+        .chantier-title { background: var(--main); color: white; padding: 10px; font-size: 14pt; font-weight: bold; text-align: center; margin-bottom: 15px; }
+        .task-row { display: flex; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid #eee; }
+        .check { width: 18px; height: 18px; border: 2px solid #000; margin-right: 15px; flex-shrink: 0; }
+        .safety { border: 2px solid var(--danger); padding: 15px; margin-top: 20px; background: #fff5f5; }
+        .draw-zone { border: 1px dashed #aaa; flex-grow: 1; margin-top: 20px; display: flex; align-items: center; justify-content: center; color: #aaa; font-weight: bold; min-height: 300px; }
+        .footer { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 30px; }
+        .sig { border: 1px solid #000; height: 80px; padding: 10px; }
+        @media print { .admin-nav { display: none; } body { background: white; padding: 0; } .page-a4 { margin: 0; width: 100%; border: none; } }
+    </style>
+</head>
+<body>
+<div class="admin-nav">
+    <b>ÉLÈVE :</b> <select id="selEleve" onchange="update()"></select>
+    <b>SÉANCE :</b> <select id="selSeance" onchange="update()">
+        <option value="S1">S1</option><option value="S2">S2</option><option value="S3">S3</option>
+        <option value="S4">S4</option><option value="S5" selected>S5</option><option value="S6">S6</option>
+        <option value="S7">S7</option><option value="S8">S8</option><option value="S9">S9</option><option value="S10">S10</option>
+    </select>
+    <button class="btn-print" onclick="window.print()">🖨️ IMPRIMER</button>
+</div>
+<div class="page-a4">
+    <div class="header">
+        <img src="https://upload.wikimedia.org/wikipedia/fr/thumb/5/5f/Logo_acad%C3%A9mie_Bordeaux.svg/512px-Logo_acad%C3%A9mie_Bordeaux.svg.png" width="70">
+        <h1 style="text-align:center">FICHE DE CHANTIER</h1>
+        <div style="text-align: right; font-size: 8pt;"><b>M. ROUSSEAU Jérôme</b><br>Lycée Léonard de Vinci</div>
+    </div>
+    <div class="info-bar">
+        <div><span>ÉLÈVE</span><b id="nom">--</b></div>
+        <div><span>POSTE</span><b id="poste">--</b></div>
+        <div><span>SÉANCE</span><b id="seance">--</b></div>
+        <div><span>REF</span><b id="ref">--</b></div>
+    </div>
+    <div class="chantier-title" id="titre">--</div>
+    <div id="taskList"></div>
+    <div class="safety"><b>⚠️ Sécurité :</b> <span id="safety-text">--</span></div>
+    <div class="draw-zone">SCHÉMA MULTIFILAIRE / NOTES</div>
+    <div class="footer"><div class="sig">Élève</div><div class="sig">Visa Enseignant</div></div>
+</div>
+<script>
+    const Planning = {
+        "ALPHONSE DAYVON": {bin:"B1", S1:"H05", S2:"H05", S3:"H05", S4:"H05", S5:"H05", S6:"H06", S7:"H06", S8:"TD5", S9:"TD6", S10:"TD7"},
+        "CZERNIK ENZO": {bin:"B1", S1:"H05", S2:"H05", S3:"H05", S4:"H05", S5:"H05", S6:"H06", S7:"H06", S8:"TD5", S9:"TD6", S10:"TD7"},
+        "DEBRIS BENJAMIN": {bin:"B2", S1:"H05", S2:"H05", S3:"H05", S4:"H05", S5:"H05", S6:"H06", S7:"H06", S8:"TD6", S9:"TD7", S10:"TD5"},
+        "DIAKITE MOUSSA": {bin:"B2", S1:"H05", S2:"H05", S3:"H05", S4:"H05", S5:"H05", S6:"H06", S7:"H06", S8:"TD6", S9:"TD7", S10:"TD5"},
+        "GEBRAEIL KIROLLOS": {bin:"B3", S1:"H05", S2:"H05", S3:"H05", S4:"H05", S5:"H05", S6:"H06", S7:"H06", S8:"TD7", S9:"TD5", S10:"TD6"},
+        "GONCALVES DIEGO": {bin:"B3", S1:"H05", S2:"H05", S3:"H05", S4:"H05", S5:"H05", S6:"H06", S7:"H06", S8:"TD7", S9:"TD5", S10:"TD6"},
+        "JOLLOIS JÉRÉMIE": {bin:"B4", S1:"H06", S2:"H06", S3:"TD5", S4:"TD6", S5:"TD7", S6:"H05", S7:"H05", S8:"H05", S9:"H05", S10:"H05"},
+        "MICHAEL KEDUS": {bin:"B4", S1:"H06", S2:"H06", S3:"TD5", S4:"TD6", S5:"TD7", S6:"H05", S7:"H05", S8:"H05", S9:"H05", S10:"H05"},
+        "ORS YANIS": {bin:"B5", S1:"H06", S2:"H06", S3:"TD6", S4:"TD7", S5:"TD5", S6:"H05", S7:"H05", S8:"H05", S9:"H05", S10:"H05"},
+        "SAUTRON KLARA": {bin:"B5", S1:"H06", S2:"H06", S3:"TD6", S4:"TD7", S5:"TD5", S6:"H05", S7:"H05", S8:"H05", S9:"H05", S10:"H05"},
+        "SINGH MANNI": {bin:"B6", S1:"H06", S2:"H06", S3:"TD7", S4:"TD5", S5:"TD6", S6:"H05", S7:"H05", S8:"H05", S9:"H05", S10:"H05"},
+        "SOW ALPHA": {bin:"B6", S1:"H06", S2:"H06", S3:"TD7", S4:"TD5", S5:"TD6", S6:"H05", S7:"H05", S8:"H05", S9:"H05", S10:"H05"}
+    };
+    const Chantiers = {
+        "H05": { titre: "H05 : SIMPLE ALLUMAGE ET PRISES", tasks: ["Pose appareillage saillie", "Conduits IRL", "Boîte dérivation"], safety: "VAT obligatoire." },
+        "H06": { titre: "H06 : VA-ET-VIENT", tasks: ["Encastrement boîtes", "Conduits ICTA", "Boîte DCL"], safety: "Coupure secteur." },
+        "TD5": { titre: "TD05 : TÉLÉRUPTEUR", tasks: ["Module tableau", "Boutons Poussoirs"], safety: "Schéma obligatoire." },
+        "TD6": { titre: "TD06 : CRÉPUSCULAIRE", tasks: ["Cellule de détection", "Réglage seuil"], safety: "Hors tension." },
+        "TD7": { titre: "TD07 : PACK CONNECTÉ", tasks: ["Passerelle Netatmo", "Appairage Zigbee"], safety: "Procédure Legrand." }
+    };
+    function update() {
+        const el = document.getElementById("selEleve").value;
+        const se = document.getElementById("selSeance").value;
+        const code = Planning[el][se];
+        const c = Chantiers[code];
+        document.getElementById("nom").innerText = el;
+        document.getElementById("poste").innerText = Planning[el].bin;
+        document.getElementById("seance").innerText = se;
+        document.getElementById("ref").innerText = code;
+        document.getElementById("titre").innerText = c.titre;
+        document.getElementById("safety-text").innerText = c.safety;
+        let h = ""; c.tasks.forEach(t => h += `<div class="task-row"><div class="check"></div>${t}</div>`);
+        document.getElementById("taskList").innerHTML = h;
+    }
+    const sel = document.getElementById("selEleve");
+    Object.keys(Planning).sort().forEach(n => sel.add(new Option(n, n)));
+    update();
+</script>
+</body>
+</html>
